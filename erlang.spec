@@ -1,6 +1,4 @@
 %undefine _missing_build_ids_terminate_build
-%define _libdir /usr/lib/erlang
-%define _bindir /usr/bin
 
 Summary: Erlang OTP package
 Name: marksteele-erlang
@@ -11,7 +9,6 @@ Group: "Development/Languages"
 Source: %{_tarname}
 URL: http://www.erlang.org
 Packager:  <mark@control-alt-del.org>
-BuildRoot: %{_tmppath}/%{name}-%{_revision}-%{release}-root
 BuildArch: x86_64
 BuildRequires:ncurses-devel
 BuildRequires:openssl-devel
@@ -41,34 +38,50 @@ This is an Erlang OTP %{version} package
 %setup -q -n %{_tarname_base}
 
 %build
+%global conf_flags --enable-shared-zlib --without-javac --without-odbc --enable-dirty-schedulers
 ./otp_build autoconf
-./otp_build configure --enable-dirty-schedulers
-./otp_build boot -a
-./otp_build release -a
+CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing" %configure %{conf_flags}
+make clean
+touch lib/cosEvent/SKIP
+touch lib/cosEventDomain/SKIP
+touch lib/cosFileTransfer/SKIP
+touch lib/cosNotification/SKIP
+touch lib/cosProperty/SKIP
+touch lib/cosTime/SKIP
+touch lib/cosTransactions/SKIP
+touch lib/jinterface/SKIP
+touch lib/megaco/SKIP
+touch lib/odbc/SKIP
+touch lib/orber/SKIP
+touch lib/test_server/SKIP
+make -j4
 
 %install
-%define buildroot_lib %{buildroot}/%{_libdir}
-%define buildroot_bin %{buildroot}/%{_bindir}
-mkdir -p %{buildroot_lib} %{buildroot_bin} %{buildroot}/usr/share
+make DESTDIR=%{buildroot} install
+find %{buildroot}%{_libdir}/erlang -type f -name info -delete
+rm -rf %{buildroot}%{_libdir}/erlang/erts-*/man
+rm -rf %{buildroot}%{_libdir}/erlang/Install
 
-cp -r %{_builddir}/%{name}-%{_revision}/bin/{cerl,ct_run,dialyzer,erl,erlc,escript,typer,x86_64-unknown-linux-gnu/{beam,beam.smp,child_setup,dyn_erl,epmd,erlexec,heart,hipe_mkliterals,hipe_mkliterals.smp,inet_gethost,run_erl,to_erl}} %{buildroot_bin}/
-cp -r %{_builddir}/%{name}-%{_revision}/release/*/* %{buildroot_lib}/
-
-rm -rf %{buildroot_lib}/lib/*/doc
-
-set +e
-for i in `find . -wholename '*/bin/*'`; do
-    objdump -G ${i}
-    RETVAL=$?
-    [ $RETVAL -eq 0 ] && strip ${i}
+for exe in %{buildroot}%{_libdir}/erlang/erts-*/bin/*
+do
+    base="$(basename "$exe")"
+    next="%{buildroot}%{_libdir}/erlang/bin/${base}"
+    rel="$(echo "$exe" | sed "s,^%{buildroot}%{_libdir}/erlang/,../,")"
+    if cmp "$exe" "$next"; then
+        ln -sf "$rel" "$next"
+        fi
 done
-set -e
-find . -iname '*.so' -exec strip --strip-unneeded {} \;
+for exe in %{buildroot}%{_libdir}/erlang/bin/*
+do
+    base="$(basename "$exe")"
+    next="%{buildroot}%{_bindir}/${base}"
+    rel="$(echo "$exe" | sed "s,^%{buildroot},,")"
+    if cmp "$exe" "$next"; then
+        ln -sf "$rel" "$next"
+        fi
+done
 
-chrpath -d %{buildroot_lib}/lib/crypto-*/priv/lib/crypto.so
-rm -rf %{buildroot_lib}/man/cat*
-
-export QA_RPATHS=3
+chrpath -d %{buildroot}%{_libdir}/erlang/lib/crypto-*/priv/lib/crypto.so
 
 %post
 echo "Erlang OTP %{version} installed"
@@ -78,3 +91,5 @@ echo "Erlang OTP %{version} installed"
 %{_libdir}/*
 %{_bindir}/*
 
+%clean
+rm -rf %{buildroot}

@@ -8,14 +8,15 @@ PKG_BUILD = 1
 PKG_VERSION_NO_H ?= $(shell echo $(PKG_VERSION) | tr - .)
 
 default:
-	rm -rf package/otp
-	mkdir -p package/otp
-	cd package; git clone https://github.com/erlang/otp
-	cd package/otp; git checkout $(PKG_REVISION)
-	rm -rf $(PKG_ID)/
-	GIT_DIR=package/otp/.git git archive --format=tar --prefix=$(PKG_ID)/ $(PKG_REVISION) | tar -xvf -
-	tar -czf $(PKG_ID).tar.gz $(PKG_ID)
-	mkdir -p BUILD packages
+	#yum-builddep erlang.spec -y
+	#rm -rf package/otp
+	#mkdir -p package/otp
+	#cd package; git clone https://github.com/erlang/otp
+	#cd package/otp; git checkout $(PKG_REVISION)
+	#rm -rf $(PKG_ID)/
+	#GIT_DIR=package/otp/.git git archive --format=tar --prefix=$(PKG_ID)/ $(PKG_REVISION) | tar -xvf -
+	#tar -czf $(PKG_ID).tar.gz $(PKG_ID)
+	#mkdir -p BUILD packages
 	rpmbuild --sign --define "_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" \
 	--define '_topdir $(PWD)' \
 	--define '_sourcedir $(PWD)' \
